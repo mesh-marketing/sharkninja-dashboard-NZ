@@ -349,14 +349,31 @@ const OR='#C4531A',GR='#1E4D2A',OR2='#D86428';
 const GOLD='#E8A020';  // Big Bets highlight colour
 
 const BIG_BETS=[
-  {code:'AS101', label:'Crispi Pro',              test:s=>/crispi pro/i.test(s)},
-  {code:'DB351', label:'BlendBoss',               test:s=>/blast max/i.test(s)||(/detect/i.test(s)&&/blender|blend/i.test(s))},
-  {code:'FS605', label:'Slushi Max',              test:s=>/slushi max/i.test(s)},
-  {code:'ES601', label:'Cafe Luxe',               test:s=>/luxe.caf/i.test(s)},
-  {code:'FW312', label:'CryoGlow',                test:s=>/cryo.glow/i.test(s)},
-  {code:'IA3241',label:'PowerDetect Speed',       test:s=>/powerdetect/i.test(s)},
-  {code:'BU3621',label:'PowerLite',               test:s=>/wandvac/i.test(s)||/powerpro/i.test(s)},
-  {code:'HD605', label:'Glam Hot Tool',           test:s=>/flexstyle/i.test(s)},
+  // Rule: ALL words in the Big Bet label must appear in the product name.
+  // AS101 — "Crispi Pro" → product must contain "Crispi" AND "Pro"
+  {code:'AS101', label:'Crispi Pro',
+   test:s=>/crispi/i.test(s)&&/pro/i.test(s)},
+  // DB351 — "BlendBoss" → product must contain "BlendBoss"
+  {code:'DB351', label:'BlendBoss',
+   test:s=>/blendboss/i.test(s)},
+  // FS605 — "Slushi Max" → product must contain "Slushi" AND "Max"
+  {code:'FS605', label:'Slushi Max',
+   test:s=>/slushi/i.test(s)&&/max/i.test(s)},
+  // ES601 — "Cafe Luxe" → product must contain "Luxe", "Caf" AND "Espresso" (excludes accessories)
+  {code:'ES601', label:'Cafe Luxe',
+   test:s=>/luxe/i.test(s)&&/caf/i.test(s)&&/espresso/i.test(s)},
+  // FW312 — "CryoGlow" → product must contain "CryoGlow" AND "Mask" (excludes charging stand)
+  {code:'FW312', label:'CryoGlow',
+   test:s=>/cryoglow/i.test(s)&&/mask/i.test(s)},
+  // IA3241 — "PowerDetect Speed" → product must contain "PowerDetect" AND "Speed"
+  {code:'IA3241',label:'PowerDetect Speed',
+   test:s=>/powerdetect/i.test(s)&&/speed/i.test(s)},
+  // BU3621 — "PowerLite" → product must contain "PowerLite"
+  {code:'BU3621',label:'PowerLite',
+   test:s=>/powerlite/i.test(s)},
+  // HD605 — "Glam Hot Tool Air Drying System" → product must contain "Glam"+"Hot"+"Tool"
+  {code:'HD605', label:'Glam Hot Tool Air Drying System',
+   test:s=>/glam/i.test(s)&&/hot/i.test(s)&&/tool/i.test(s)},
 ];
 function isBB(sku){return BIG_BETS.some(b=>b.test(sku));}
 function getBB(sku){return BIG_BETS.find(b=>b.test(sku));}
