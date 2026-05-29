@@ -185,6 +185,7 @@ body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--dark);f
         <div class="hero-kpi"><div class="hero-kpi-lbl">Total Shifts</div><div class="hero-kpi-val ac" id="ks">—</div><div class="hero-kpi-sub">worked</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Units Sold</div><div class="hero-kpi-val" id="ku">—</div><div class="hero-kpi-sub">products sold</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Revenue</div><div class="hero-kpi-val ac" id="krev">—</div><div class="hero-kpi-sub">NZD generated</div></div>
+        <div class="hero-kpi"><div class="hero-kpi-lbl">Revenue / Hour</div><div class="hero-kpi-val" id="krph">—</div><div class="hero-kpi-sub">NZD per hour worked</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Total Demos</div><div class="hero-kpi-val" id="kd">—</div><div class="hero-kpi-sub">demonstrations</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Units / Hour</div><div class="hero-kpi-val" id="kp">—</div><div class="hero-kpi-sub">per hour worked</div></div>
       </div>
@@ -490,6 +491,7 @@ function updKPI(ids,sv){
   document.getElementById('ks').textContent=sh;
   document.getElementById('ku').textContent=u;
   document.getElementById('krev').textContent=fmt(rev);
+  document.getElementById('krph').textContent=hr>0?'$'+(rev/hr).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,','):'$0';
   document.getElementById('kd').textContent=dm;
   document.getElementById('kp').textContent=hr>0?(u/hr).toFixed(2):'0.00';
 }
