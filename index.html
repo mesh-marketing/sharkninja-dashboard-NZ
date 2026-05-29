@@ -132,6 +132,10 @@ body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--dark);f
 .uv{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;color:var(--orange)}
 .uv-g{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;color:var(--green)}
 .rv{font-family:'Montserrat',sans-serif;font-size:11px;color:var(--mid)}
+.bb-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;background:#FFF3D0;border:1px solid #E8A020;font-size:9px;font-weight:800;color:#8A5A00;font-family:'Montserrat',sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:6px}
+.uv-bb{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:800;color:#E8A020}
+.bb-row td{background:#FFFDF5}
+.bb-row:hover td{background:#FFF8E0 !important}
 
 /* MODAL */
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
@@ -182,7 +186,6 @@ body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--dark);f
         <div class="hero-kpi"><div class="hero-kpi-lbl">Units Sold</div><div class="hero-kpi-val" id="ku">—</div><div class="hero-kpi-sub">products sold</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Revenue</div><div class="hero-kpi-val ac" id="krev">—</div><div class="hero-kpi-sub">NZD generated</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Total Demos</div><div class="hero-kpi-val" id="kd">—</div><div class="hero-kpi-sub">demonstrations</div></div>
-        <div class="hero-kpi"><div class="hero-kpi-lbl">Demo Ratio</div><div class="hero-kpi-val" id="kr">—</div><div class="hero-kpi-sub">units per demo</div></div>
         <div class="hero-kpi"><div class="hero-kpi-lbl">Units / Hour</div><div class="hero-kpi-val" id="kp">—</div><div class="hero-kpi-sub">per hour worked</div></div>
       </div>
     </div>
@@ -240,6 +243,11 @@ body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--dark);f
       <div style="font-size:11px;color:var(--muted);font-style:italic">Select a category to see model breakdown</div>
     </div>
     <div class="sku-cats" id="sku-cats"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;margin-top:-8px">
+      <div style="width:14px;height:14px;background:#E8A020;border-radius:2px;flex-shrink:0"></div>
+      <span style="font-family:'Montserrat',sans-serif;font-size:10px;font-weight:700;color:#8A5A00;letter-spacing:.06em;text-transform:uppercase">★ Big Bet SKU (highlighted in gold)</span>
+      <span style="font-size:10px;color:var(--muted);margin-left:4px">AS101 · DB351 · FS605 · ES601 · FW312 · IA3241 · BU3621 · HD605</span>
+    </div>
     <div class="sku-grid">
       <div><div class="sku-chart-wrap"><canvas id="csku"></canvas></div></div>
       <div class="sku-tbl">
@@ -326,12 +334,32 @@ const SALES=[[76564, "Other Products", "Blending", "Ninja Detect Duo Power Blend
 
 const FAMS=['Coffee Machine','Cooking','Floor Care','Frozen','Other Products','Beauty'];
 const FAM_COLORS=['#1E4D2A','#C4531A','#265E34','#D86428','#3A6E45','#E8824A'];
-const REGIONS=['Auckland','Hamilton','Wellington','Christchurch'];
+const REGIONS=['Auckland North','Auckland South','Hamilton','Wellington','Christchurch'];
 const RETAILERS=['Harvey Norman','Noel Leeming'];
+function getRegion(v){
+  if(v[1]!=='Auckland')return v[1];
+  const s=v[2].toLowerCase();
+  if(s.includes('manukau'))return 'Auckland South';
+  return 'Auckland North';
+}
 const STORES=[...new Set(VISITS.map(v=>v[2]))].sort();
 const EMPS=[...new Set(VISITS.map(v=>v[3]))].sort();
 const WEEKS={'2 May':'Wk1','3 May':'Wk1','9 May':'Wk2','10 May':'Wk2','16 May':'Wk3','17 May':'Wk3','23 May':'Wk4','24 May':'Wk4'};
 const OR='#C4531A',GR='#1E4D2A',OR2='#D86428';
+const GOLD='#E8A020';  // Big Bets highlight colour
+
+const BIG_BETS=[
+  {code:'AS101', label:'Crispi Pro',              test:s=>/crispi pro/i.test(s)},
+  {code:'DB351', label:'BlendBoss',               test:s=>/blast max/i.test(s)||(/detect/i.test(s)&&/blender|blend/i.test(s))},
+  {code:'FS605', label:'Slushi Max',              test:s=>/slushi max/i.test(s)},
+  {code:'ES601', label:'Cafe Luxe',               test:s=>/luxe.caf/i.test(s)},
+  {code:'FW312', label:'CryoGlow',                test:s=>/cryo.glow/i.test(s)},
+  {code:'IA3241',label:'PowerDetect Speed',       test:s=>/powerdetect/i.test(s)},
+  {code:'BU3621',label:'PowerLite',               test:s=>/wandvac/i.test(s)||/powerpro/i.test(s)},
+  {code:'HD605', label:'Glam Hot Tool',           test:s=>/flexstyle/i.test(s)},
+];
+function isBB(sku){return BIG_BETS.some(b=>b.test(sku));}
+function getBB(sku){return BIG_BETS.find(b=>b.test(sku));}
 
 let F={regions:[],retailers:[],families:[],stores:[],emps:[]};
 let CI={};
@@ -340,7 +368,7 @@ let stSort='units',stQ='',chSort='units',chQ='';
 
 // --- FILTER HELPERS ---
 function matchVisit(v){
-  if(F.regions.length&&!F.regions.includes(v[1]))return false;
+  if(F.regions.length&&!F.regions.includes(getRegion(v)))return false;
   if(F.retailers.length&&!F.retailers.includes(v[5]))return false;
   if(F.stores.length&&!F.stores.includes(v[2]))return false;
   if(F.emps.length&&!F.emps.includes(v[3]))return false;
@@ -409,11 +437,17 @@ document.addEventListener('click',e=>{
   if(!document.getElementById('edw').contains(e.target))document.getElementById('edd').classList.remove('open');
 });
 
+function safe(fn){try{fn();}catch(e){console.error(fn.name||'fn','error:',e);}}
 function apply(){
   const ids=getMatchIds();
   const sv=getSales(ids);
-  updHint(ids,sv);updKPI(ids,sv);updCharts(ids,sv);updSKU();
-  rST(stQ);rCH(chQ);rRT(ids);
+  safe(()=>updHint(ids,sv));
+  safe(()=>updKPI(ids,sv));
+  safe(()=>updCharts(ids,sv));
+  safe(()=>updSKU());
+  safe(()=>rST(stQ));
+  safe(()=>rCH(chQ));
+  safe(()=>rRT(ids));
 }
 
 function updHint(ids,sv){
@@ -440,54 +474,117 @@ function updKPI(ids,sv){
   document.getElementById('ku').textContent=u;
   document.getElementById('krev').textContent=fmt(rev);
   document.getElementById('kd').textContent=dm;
-  document.getElementById('kr').textContent=dm>0?(u/dm).toFixed(2):'0.00';
   document.getElementById('kp').textContent=hr>0?(u/hr).toFixed(2):'0.00';
 }
 
 function dc(id){if(CI[id]){CI[id].destroy();delete CI[id];}}
+// Split an array of sale rows into BB units and Other units per key
+function splitBB(salesArr, keyFn){
+  const bb={}, oth={};
+  salesArr.forEach(s=>{
+    const k=keyFn(s); const n=s[4];
+    if(isBB(s[3])){bb[k]=(bb[k]||0)+n;} else {oth[k]=(oth[k]||0)+n;}
+  });
+  return{bb,oth};
+}
+function sortedKeys(bb,oth,n=10){
+  const tot={};
+  Object.keys({...bb,...oth}).forEach(k=>tot[k]=(bb[k]||0)+(oth[k]||0));
+  return Object.entries(tot).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k);
+}
+const stackedLegend={display:true,position:'top',labels:{font:{family:'Montserrat',size:10},color:'#5A5A5A',padding:12,usePointStyle:true,pointStyleWidth:10}};
+const noLabels={display:false};
+function totalLabels(bbData,othData){
+  return{display:true,anchor:'end',align:'right',color:'#2A2A2A',font:{family:'Montserrat',size:9.5,weight:'800'},formatter:(v,ctx)=>{const tot=(bbData[ctx.dataIndex]||0)+(othData[ctx.dataIndex]||0);return tot>0?tot:'';},clip:false};
+}
+function totalLabelsTop(bbData,othData){
+  return{display:true,anchor:'end',align:'top',color:'#2A2A2A',font:{family:'Montserrat',size:9.5,weight:'800'},formatter:(v,ctx)=>{const tot=(bbData[ctx.dataIndex]||0)+(othData[ctx.dataIndex]||0);return tot>0?tot:'';},clip:false};
+}
 const tck={font:{family:'Open Sans',size:11},color:'#909090'};
 const grd={color:'#EEEEEE'};
 
-function updCharts(ids,sv){
+function updCharts(ids,sv){try{
   const allSv=getSales(new Set(VISITS.filter(matchVisit).map(v=>v[0])));
 
-  // Category
+  // ── Category: stacked BB (gold) + Other (category colour) ──
   dc('ccat');
-  const ct=FAMS.map(f=>allSv.filter(s=>s[1]===f).reduce((a,s)=>a+s[4],0));
-  const catBg=FAMS.map((f,i)=>F.families.length===0||F.families.includes(f)?FAM_COLORS[i]:'#E6E6E6');
+  const catBB=FAMS.map(f=>allSv.filter(s=>s[1]===f&&isBB(s[3])).reduce((a,s)=>a+s[4],0));
+  const catOth=FAMS.map(f=>allSv.filter(s=>s[1]===f&&!isBB(s[3])).reduce((a,s)=>a+s[4],0));
+  const catBgFull=FAMS.map((f,i)=>F.families.length===0||F.families.includes(f)?FAM_COLORS[i]:'#E0E0E0');
+  const catBgBB=FAMS.map((f,i)=>F.families.length===0||F.families.includes(f)?GOLD:'#E0E0E0');
   CI.ccat=new Chart(document.getElementById('ccat'),{
-    type:'bar',data:{labels:FAMS,datasets:[{data:ct,backgroundColor:catBg,borderRadius:2}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{datalabels:{display:true,anchor:'end',align:'top',color:GR,font:{family:'Montserrat',size:10,weight:'800'},formatter:v=>Math.round(v)},legend:{display:false}},scales:{x:{grid:{display:false},ticks:tck},y:{grid:grd,ticks:tck}}},plugins:[ChartDataLabels]
+    type:'bar',
+    data:{labels:FAMS,datasets:[
+      {label:'Other',data:catOth,backgroundColor:catBgFull,borderRadius:0,stack:'u'},
+      {label:'Big Bets ★',data:catBB,backgroundColor:catBgBB,borderRadius:2,stack:'u',
+        datalabels:totalLabelsTop(catBB,catOth)}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{
+      datalabels:{display:false},
+      legend:stackedLegend
+    },scales:{x:{stacked:true,grid:{display:false},ticks:tck},y:{stacked:true,grid:grd,ticks:tck}}},
+    plugins:[ChartDataLabels]
   });
 
-  // Region
+  // ── Region: horizontal stacked BB + Other ──
   dc('creg');
-  const rm={};sv.forEach(s=>{const v=VISITS.find(v=>v[0]===s[0]);if(v)rm[v[1]]=(rm[v[1]]||0)+s[4];});
-  const rk=REGIONS.filter(r=>rm[r]>0),rv=rk.map(r=>rm[r]||0);
+  const {bb:regBB,oth:regOth}=splitBB(sv,s=>{const v=VISITS.find(x=>x[0]===s[0]);return v?getRegion(v):'';});
+  const regKeys=sortedKeys(regBB,regOth,10).filter(k=>k);
+  const rBBd=regKeys.map(k=>regBB[k]||0), rOthd=regKeys.map(k=>regOth[k]||0);
+  const regColors=[GR,'#3A6E45','#265E34',OR,'#265E34'].slice(0,regKeys.length);
   CI.creg=new Chart(document.getElementById('creg'),{
-    type:'doughnut',data:{labels:rk,datasets:[{data:rv,backgroundColor:[GR,OR,'#265E34',OR2].slice(0,rk.length),borderWidth:3,borderColor:'#fff'}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'Open Sans',size:12},padding:16,color:'#2A2A2A'}},datalabels:{display:true,color:'#fff',font:{family:'Montserrat',size:11,weight:'800'},formatter:v=>Math.round(v),textStrokeColor:'rgba(0,0,0,.3)',textStrokeWidth:2}}},plugins:[ChartDataLabels]
+    type:'bar',
+    data:{labels:regKeys,datasets:[
+      {label:'Other',data:rOthd,backgroundColor:'#A8BEA8',borderRadius:0,stack:'u'},
+      {label:'Big Bets ★',data:rBBd,backgroundColor:GOLD,borderRadius:2,stack:'u',
+        datalabels:totalLabels(rBBd,rOthd)}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{
+      datalabels:{display:false},
+      legend:stackedLegend
+    },scales:{x:{stacked:true,grid:grd,ticks:tck},y:{stacked:true,grid:{display:false},ticks:{font:{family:'Open Sans',size:11},color:'#2A2A2A'}}}},
+    plugins:[ChartDataLabels]
   });
 
-  // Top stores
+  // ── Top Stores: horizontal stacked BB + Other ──
   dc('csto');
-  const stm={};sv.forEach(s=>{const v=VISITS.find(x=>x[0]===s[0]);if(v)stm[v[2]]=(stm[v[2]]||0)+s[4];});
-  const t10s=Object.entries(stm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const{bb:sBB,oth:sOth}=splitBB(sv,s=>{const v=VISITS.find(x=>x[0]===s[0]);return v?v[2]:'';});
+  const sKeys=sortedKeys(sBB,sOth,10).filter(k=>k);
+  const sBBd=sKeys.map(k=>sBB[k]||0), sOthd=sKeys.map(k=>sOth[k]||0);
   CI.csto=new Chart(document.getElementById('csto'),{
-    type:'bar',data:{labels:t10s.map(([s])=>s.replace('Harvey Norman ','HN ').replace('Noel Leeming ','NL')),datasets:[{data:t10s.map(([,v])=>v),backgroundColor:OR,borderRadius:2,hoverBackgroundColor:OR2}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:OR,font:{family:'Montserrat',size:10,weight:'800'}}},scales:{x:{grid:grd,ticks:tck},y:{grid:{display:false},ticks:{font:{family:'Open Sans',size:10},color:'#2A2A2A'}}}},plugins:[ChartDataLabels]
+    type:'bar',
+    data:{labels:sKeys.map(s=>s.replace('Harvey Norman ','HN ').replace('Noel Leeming ','NL')),datasets:[
+      {label:'Other',data:sOthd,backgroundColor:OR,borderRadius:0,stack:'u'},
+      {label:'Big Bets ★',data:sBBd,backgroundColor:GOLD,borderRadius:2,stack:'u',
+        datalabels:totalLabels(sBBd,sOthd)}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{
+      datalabels:{display:false},
+      legend:stackedLegend
+    },scales:{x:{stacked:true,grid:grd,ticks:tck},y:{stacked:true,grid:{display:false},ticks:{font:{family:'Open Sans',size:10},color:'#2A2A2A'}}}},
+    plugins:[ChartDataLabels]
   });
 
-  // Top champions
+  // ── Top Champions: horizontal stacked BB + Other ──
   dc('cchmp');
-  const em={};sv.forEach(s=>{const v=VISITS.find(x=>x[0]===s[0]);if(v)em[v[3]]=(em[v[3]]||0)+s[4];});
-  const t10e=Object.entries(em).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const{bb:eBB,oth:eOth}=splitBB(sv,s=>{const v=VISITS.find(x=>x[0]===s[0]);return v?v[3]:'';});
+  const eKeys=sortedKeys(eBB,eOth,10).filter(k=>k);
+  const eBBd=eKeys.map(k=>eBB[k]||0), eOthd=eKeys.map(k=>eOth[k]||0);
   CI.cchmp=new Chart(document.getElementById('cchmp'),{
-    type:'bar',data:{labels:t10e.map(([n])=>n),datasets:[{data:t10e.map(([,v])=>v),backgroundColor:GR,borderRadius:2,hoverBackgroundColor:'#265E34'}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:GR,font:{family:'Montserrat',size:10,weight:'800'}}},scales:{x:{grid:grd,ticks:tck},y:{grid:{display:false},ticks:{font:{family:'Open Sans',size:10},color:'#2A2A2A'}}}},plugins:[ChartDataLabels]
+    type:'bar',
+    data:{labels:eKeys,datasets:[
+      {label:'Other',data:eOthd,backgroundColor:GR,borderRadius:0,stack:'u'},
+      {label:'Big Bets ★',data:eBBd,backgroundColor:GOLD,borderRadius:2,stack:'u',
+        datalabels:totalLabels(eBBd,eOthd)}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{
+      datalabels:{display:false},
+      legend:stackedLegend
+    },scales:{x:{stacked:true,grid:grd,ticks:tck},y:{stacked:true,grid:{display:false},ticks:{font:{family:'Open Sans',size:10},color:'#2A2A2A'}}}},
+    plugins:[ChartDataLabels]
   });
 
-  // Demos by store
+  // ── Demos by Store: no BB concept, keep clean ──
   dc('cdemo');
   const ddm={};getVisits(ids).forEach(v=>{ddm[v[2]]=(ddm[v[2]]||0)+v[7];});
   const dds=Object.entries(ddm).sort((a,b)=>b[1]-a[1]).slice(0,10);
@@ -496,14 +593,26 @@ function updCharts(ids,sv){
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:GR,font:{family:'Montserrat',size:10,weight:'800'}}},scales:{x:{grid:grd,ticks:tck},y:{grid:{display:false},ticks:{font:{family:'Open Sans',size:10},color:'#2A2A2A'}}}},plugins:[ChartDataLabels]
   });
 
-  // Weekly trend
+  // ── Weekly: stacked bar BB + Other ──
   dc('cwk');
-  const wm={Wk1:0,Wk2:0,Wk3:0,Wk4:0};
-  sv.forEach(s=>{const v=VISITS.find(x=>x[0]===s[0]);if(v&&WEEKS[v[4]])wm[WEEKS[v[4]]]+=s[4];});
+  const wkKeys=['Wk1','Wk2','Wk3','Wk4'];
+  const wBB={Wk1:0,Wk2:0,Wk3:0,Wk4:0}, wOth={Wk1:0,Wk2:0,Wk3:0,Wk4:0};
+  sv.forEach(s=>{const v=VISITS.find(x=>x[0]===s[0]);if(!v||!WEEKS[v[4]])return;const wk=WEEKS[v[4]];if(isBB(s[3]))wBB[wk]+=s[4];else wOth[wk]+=s[4];});
+  const wBBd=wkKeys.map(k=>wBB[k]), wOthd=wkKeys.map(k=>wOth[k]);
   CI.cwk=new Chart(document.getElementById('cwk'),{
-    type:'line',data:{labels:['Wk 1 (2–3 May)','Wk 2 (9–10 May)','Wk 3 (16–17 May)','Wk 4 (23–24 May)'],datasets:[{data:Object.values(wm),borderColor:OR,backgroundColor:'rgba(196,83,26,.10)',fill:true,tension:0.35,pointBackgroundColor:'#fff',pointBorderColor:OR,pointBorderWidth:3,pointRadius:7}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,align:'top',anchor:'end',color:OR,font:{family:'Montserrat',size:11,weight:'800'}}},scales:{x:{grid:{display:false},ticks:tck},y:{grid:grd,ticks:tck,beginAtZero:true}}},plugins:[ChartDataLabels]
+    type:'bar',
+    data:{labels:['Wk 1 (2–3 May)','Wk 2 (9–10 May)','Wk 3 (16–17 May)','Wk 4 (23–24 May)'],datasets:[
+      {label:'Other',data:wOthd,backgroundColor:OR,borderRadius:0,stack:'u'},
+      {label:'Big Bets ★',data:wBBd,backgroundColor:GOLD,borderRadius:2,stack:'u',
+        datalabels:totalLabelsTop(wBBd,wOthd)}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{
+      datalabels:{display:false},
+      legend:stackedLegend
+    },scales:{x:{stacked:true,grid:{display:false},ticks:tck},y:{stacked:true,grid:grd,ticks:tck,beginAtZero:true}}},
+    plugins:[ChartDataLabels]
   });
+  }catch(e){console.error('updCharts error:',e);}
 }
 
 // --- SKU PANEL ---
@@ -518,7 +627,7 @@ function buildSkuCats(){
   });
 }
 
-function updSKU(){
+function updSKU(){try{
   const ids=getMatchIds();
   const sv=getSales(ids).filter(s=>s[1]===skuCat);
   const skuMap={};sv.forEach(s=>{if(!skuMap[s[3]])skuMap[s[3]]={u:0,rev:0};skuMap[s[3]].u+=s[4];skuMap[s[3]].rev+=s[4]*s[5];});
@@ -527,16 +636,23 @@ function updSKU(){
   // Chart
   dc('csku');
   const top12=rows.slice(0,12);
-  const color=FAMS.indexOf(skuCat)>=0?FAM_COLORS[FAMS.indexOf(skuCat)]:GR;
+  const baseColor=FAMS.indexOf(skuCat)>=0?FAM_COLORS[FAMS.indexOf(skuCat)]:GR;
+  const skuColors=top12.map(r=>isBB(r.sku)?GOLD:baseColor);
+  const skuBorderColors=top12.map(r=>isBB(r.sku)?'#C07010':'transparent');
   CI.csku=new Chart(document.getElementById('csku'),{
     type:'bar',
-    data:{labels:top12.map(r=>r.sku.length>38?r.sku.substring(0,36)+'…':r.sku),datasets:[{data:top12.map(r=>r.u),backgroundColor:color,borderRadius:2,hoverBackgroundColor:OR}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:color,font:{family:'Montserrat',size:10,weight:'800'}}},scales:{x:{grid:grd,ticks:tck},y:{grid:{display:false},ticks:{font:{family:'Open Sans',size:9.5},color:'#2A2A2A'}}}},plugins:[ChartDataLabels]
+    data:{labels:top12.map(r=>(isBB(r.sku)?'★ ':'')+r.sku.substring(0,36)+(r.sku.length>36?'…':'')),datasets:[{data:top12.map(r=>r.u),backgroundColor:skuColors,borderColor:skuBorderColors,borderWidth:1,borderRadius:2,hoverBackgroundColor:OR}]},
+    options:{clip:false,layout:{padding:{right:36}},indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true,anchor:'end',align:'right',color:function(ctx){return skuColors[ctx.dataIndex]||'#2A2A2A';},font:{family:'Montserrat',size:10,weight:'800'}}},scales:{x:{grid:grd,ticks:tck,suggestedMax:function(){return top12.length?Math.max(...top12.map(r=>r.u))*1.22:10;}()},y:{grid:{display:false},ticks:{font:{family:'Open Sans',size:9.5},color:'#2A2A2A'}}}},plugins:[ChartDataLabels]
   });
 
   // Table
   const tb=document.getElementById('tsku-body');
-  tb.innerHTML=rows.map((r,i)=>`<tr class="${i===0?'r1':''}" ><td class="rn">${i+1}</td><td style="max-width:260px;word-break:break-word">${r.sku}</td><td class="uv">${r.u}</td><td class="rv">${fmtFull(r.rev)}</td></tr>`).join('');
+  tb.innerHTML=rows.map((r,i)=>{
+    const bb=getBB(r.sku);
+    const bbTag=bb?`<span class="bb-badge">★ ${bb.code}</span>`:'';
+    return `<tr class="${i===0?'r1':''} ${bb?'bb-row':''}"><td class="rn">${i+1}</td><td style="max-width:260px;word-break:break-word">${r.sku}${bbTag}</td><td class="${bb?'uv-bb':'uv'}">${r.u}</td><td class="rv">${fmtFull(r.rev)}</td></tr>`;
+  }).join('');
+  }catch(e){console.error('updSKU error:',e);}
 }
 
 // --- TABLES ---
@@ -575,7 +691,7 @@ function rRT(ids){
   getVisits(ids).forEach(v=>{if(!ret[v[5]])ret[v[5]]={r:v[5],sh:0,hr:0,dm:0,u:0,rev:0};ret[v[5]].sh++;ret[v[5]].hr+=v[6];ret[v[5]].dm+=v[7];});
   getSales(ids).forEach(s=>{const v=VISITS.find(x=>x[0]===s[0]);if(v&&ret[v[5]]){ret[v[5]].u+=s[4];ret[v[5]].rev+=s[4]*s[5];}});
   const rows=Object.values(ret).sort((a,b)=>b.u-a.u);
-  document.getElementById('trt').innerHTML=rows.map(x=>`<tr><td><span class="badge ${x.r==='Harvey Norman'?'bhn':'bnl'}">${x.r}</span></td><td>${x.sh}</td><td>${x.dm}</td><td class="uv">${x.u}</td><td class="rv">${fmtFull(x.rev)}</td><td>${x.dm>0?(x.u/x.dm).toFixed(2):'—'}</td><td>${x.hr>0?(x.u/x.hr).toFixed(2):'0.00'}</td></tr>`).join('');
+  document.getElementById('trt').innerHTML=rows.map(x=>`<tr style="cursor:pointer" onclick="showRM('${x.r.replace(/'/g,"\'")}')"><td><span class="badge ${x.r==='Harvey Norman'?'bhn':'bnl'}">${x.r}</span></td><td>${x.sh}</td><td>${x.dm}</td><td class="uv">${x.u}</td><td class="rv">${fmtFull(x.rev)}</td><td>${x.dm>0?(x.u/x.dm).toFixed(2):'—'}</td><td>${x.hr>0?(x.u/x.hr).toFixed(2):'0.00'}</td></tr>`).join('');
 }
 
 // --- MODALS ---
@@ -602,7 +718,7 @@ function showSM(store){
       ${Object.entries(famMap).sort((a,b)=>b[1]-a[1]).map(([f,n])=>`<tr><td>${f}</td><td class="uv">${n}</td><td class="rv">${fmtFull(sales.filter(s=>s[1]===f).reduce((a,s)=>a+s[4]*s[5],0))}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="msec"><div class="mst">SKU Breakdown — All Models</div><table class="dt"><thead><tr><th>#</th><th>Model</th><th>Cat.</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
-      ${Object.entries(skuMap).sort((a,b)=>b[1].u-a[1].u).map(([sku,d],i)=>`<tr><td class="rn">${i+1}</td><td style="max-width:240px;word-break:break-word;font-size:11px">${sku}</td><td style="font-size:10px;color:var(--muted)">${d.fam}</td><td class="uv">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`).join('')}
+      ${Object.entries(skuMap).sort((a,b)=>b[1].u-a[1].u).map(([sku,d],i)=>{const bb=getBB(sku);return `<tr class="${bb?'bb-row':''}"><td class="rn">${i+1}</td><td style="max-width:240px;word-break:break-word;font-size:11px">${sku}${bb?`<span class="bb-badge">★ ${bb.code}</span>`:''}</td><td style="font-size:10px;color:var(--muted)">${d.fam}</td><td class="${bb?'uv-bb':'uv'}">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`;}).join('')}
     </tbody></table></div>`;
   document.getElementById('mo').classList.add('open');
 }
@@ -627,11 +743,60 @@ function showCM(emp){
       <div class="mk gr"><div class="mkl">Demo Ratio</div><div class="mkv gr">${dm>0?(u/dm).toFixed(2):'—'}</div></div>
     </div></div>
     <div class="msec"><div class="mst">Top Models Sold</div><table class="dt"><thead><tr><th>#</th><th>Model</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
-      ${Object.entries(skuMap).sort((a,b)=>b[1].u-a[1].u).map(([sku,d],i)=>`<tr><td class="rn">${i+1}</td><td style="max-width:260px;word-break:break-word;font-size:11px">${sku}</td><td class="uv">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`).join('')}
+      ${Object.entries(skuMap).sort((a,b)=>b[1].u-a[1].u).map(([sku,d],i)=>{const bb=getBB(sku);return `<tr class="${bb?'bb-row':''}"><td class="rn">${i+1}</td><td style="max-width:260px;word-break:break-word;font-size:11px">${sku}${bb?`<span class="bb-badge">★ ${bb.code}</span>`:''}</td><td class="${bb?'uv-bb':'uv'}">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`;}).join('')}
     </tbody></table></div>
     <div class="msec"><div class="mst">Store Breakdown</div><table class="dt"><thead><tr><th>Store</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
       ${Object.entries(stMap).sort((a,b)=>b[1].u-a[1].u).map(([s,d])=>`<tr><td>${s}</td><td class="uv">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`).join('')}
     </tbody></table></div>`;
+  document.getElementById('mo').classList.add('open');
+}
+
+function showRM(retailer){
+  const ids=getMatchIds();
+  const vis=getVisits(ids).filter(v=>v[5]===retailer);
+  const sales=getSales(ids).filter(s=>vis.some(v=>v[0]===s[0]));
+  const sh=vis.length,hr=vis.reduce((a,v)=>a+v[6],0),dm=vis.reduce((a,v)=>a+v[7],0);
+  const u=sales.reduce((a,s)=>a+s[4],0),rev=sales.reduce((a,s)=>a+s[4]*s[5],0);
+
+  // Category breakdown
+  const famMap={};sales.forEach(s=>{famMap[s[1]]=(famMap[s[1]]||0)+s[4];});
+
+  // SKU breakdown
+  const skuMap={};sales.forEach(s=>{if(!skuMap[s[3]])skuMap[s[3]]={u:0,rev:0,fam:s[1]};skuMap[s[3]].u+=s[4];skuMap[s[3]].rev+=s[4]*s[5];});
+
+  // Store breakdown
+  const stMap={};vis.forEach(v=>{if(!stMap[v[2]])stMap[v[2]]={u:0,rev:0,sh:0,dm:0};stMap[v[2]].sh++;stMap[v[2]].dm+=v[7];});
+  sales.forEach(s=>{const v=vis.find(x=>x[0]===s[0]);if(v&&stMap[v[2]]){stMap[v[2]].u+=s[4];stMap[v[2]].rev+=s[4]*s[5];}});
+
+  // Champion breakdown
+  const chMap={};vis.forEach(v=>{if(!chMap[v[3]])chMap[v[3]]={u:0,sh:0};chMap[v[3]].sh++;});
+  sales.forEach(s=>{const v=vis.find(x=>x[0]===s[0]);if(v&&chMap[v[3]])chMap[v[3]].u+=s[4];});
+
+  document.getElementById('mtit').textContent=retailer;
+  document.getElementById('msub').textContent='Retailer Performance · May 2026';
+  document.getElementById('mbod').innerHTML=`
+    <div class="msec"><div class="mst">Overview</div><div class="mkg">
+      <div class="mk"><div class="mkl">Shifts</div><div class="mkv">${sh}</div></div>
+      <div class="mk ac"><div class="mkl">Units Sold</div><div class="mkv ac">${u}</div></div>
+      <div class="mk ac"><div class="mkl">Revenue</div><div class="mkv ac">${fmtFull(rev)}</div></div>
+      <div class="mk"><div class="mkl">Demos</div><div class="mkv">${dm}</div></div>
+      <div class="mk gr"><div class="mkl">Demo Ratio</div><div class="mkv gr">${dm>0?(u/dm).toFixed(2):'—'}</div></div>
+      <div class="mk gr"><div class="mkl">Units/Hour</div><div class="mkv gr">${hr>0?(u/hr).toFixed(2):'0.00'}</div></div>
+    </div></div>
+    <div class="msec"><div class="mst">Units by Category</div><table class="dt"><thead><tr><th>Category</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
+      ${Object.entries(famMap).sort((a,b)=>b[1]-a[1]).map(([f,n])=>`<tr><td>${f}</td><td class="uv">${n}</td><td class="rv">${fmtFull(sales.filter(s=>s[1]===f).reduce((a,s)=>a+s[4]*s[5],0))}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="msec"><div class="mst">SKU Breakdown — All Models</div><table class="dt"><thead><tr><th>#</th><th>Model</th><th>Cat.</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
+      ${Object.entries(skuMap).sort((a,b)=>b[1].u-a[1].u).map(([sku,d],i)=>{const bb=getBB(sku);return `<tr class="${bb?'bb-row':''}"><td class="rn">${i+1}</td><td style="max-width:220px;word-break:break-word;font-size:11px">${sku}${bb?`<span class="bb-badge">★ ${bb.code}</span>`:''}</td><td style="font-size:10px;color:var(--muted)">${d.fam}</td><td class="${bb?'uv-bb':'uv'}">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`;}).join('')}
+    </tbody></table></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="msec"><div class="mst">Store Breakdown</div><table class="dt"><thead><tr><th>Store</th><th>Shifts</th><th>Units</th><th>Revenue</th></tr></thead><tbody>
+        ${Object.entries(stMap).sort((a,b)=>b[1].u-a[1].u).map(([s,d])=>`<tr><td style="font-size:11px">${s}</td><td>${d.sh}</td><td class="uv">${d.u}</td><td class="rv">${fmtFull(d.rev)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="msec"><div class="mst">Champions</div><table class="dt"><thead><tr><th>Champion</th><th>Shifts</th><th>Units</th></tr></thead><tbody>
+        ${Object.entries(chMap).sort((a,b)=>b[1].u-a[1].u).map(([c,d])=>`<tr><td>${c}</td><td>${d.sh}</td><td class="uv">${d.u}</td></tr>`).join('')}
+      </tbody></table></div>
+    </div>`;
   document.getElementById('mo').classList.add('open');
 }
 
