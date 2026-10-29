@@ -868,8 +868,7 @@ function resetAll(){
   document.getElementById('sbl').textContent='All Stores';
   document.getElementById('ebl').textContent='All Champions';
   document.querySelectorAll('#cmo .chip').forEach(c=>c.classList.remove('active'));
-  document.getElementById('mth-toggle').textContent='Select All';
-  document.getElementById('mth-toggle').classList.remove('all-on');
+  if(document.getElementById('mth-toggle')){document.getElementById('mth-toggle').textContent='Select All';document.getElementById('mth-toggle').classList.remove('all-on');}
   document.querySelectorAll('.sort-select').forEach(s=>s.value='units');
   stSort='units';chSort='units';
   apply();
